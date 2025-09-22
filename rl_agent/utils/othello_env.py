@@ -22,7 +22,9 @@ class OthelloEnv:
         """
         環境を初期状態にリセットし、観測を返す
         Returns:
-            observation (np.ndarray): 盤面の状態 (8x8の配列)
+            observation (np.ndarray): 観測 (2, 8, 8, float32)
+                - [0] 盤面: -1(白), 0(空), 1(黒)
+                - [1] 手番: 盤面と同形状で、全要素が現手番(BLACK=1/WHITE=-1)
         """
         self.game = OthelloGame()
         self.player = self.game.player
@@ -37,7 +39,7 @@ class OthelloEnv:
                 指定された場合、行動適用後に報酬を計算
         Returns:
             tuple:
-                - observation (np.ndarray): 次の盤面の状態 (8x8, float32)
+                - observation (np.ndarray): 次の観測 (2, 8, 8, float32)
                 - reward (float): 報酬
                 - done (bool): ゲーム終了フラグ
                 - info (dict): 追加情報
@@ -71,11 +73,16 @@ class OthelloEnv:
 
     def get_state(self):
         """
-        現在の盤面をnumpy配列で取得
+        現在の観測を numpy 配列で取得
         Returns:
-            observation (np.ndarray): 盤面の状態 (8x8, float32)
+            observation (np.ndarray): (2, 8, 8, float32)
+                - [0] 盤面: -1(白), 0(空), 1(黒)
+                - [1] 手番: 盤面と同形状で、全要素が現手番(BLACK=1/WHITE=-1)
         """
-        return np.array(self.game.board, dtype=np.float32)
+        board = np.array(self.game.board, dtype=np.float32)
+        player_plane = np.full_like(board, fill_value=self.game.player, dtype=np.float32)
+        state = np.stack([board, player_plane], axis=0)
+        return state
 
     def legal_actions(self):
         """

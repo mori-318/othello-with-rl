@@ -87,3 +87,6 @@ class ShapedReward:
         phi_next = self.potential.phi(next_env)
         shaped = self.gamma * phi_next - phi_prev
         return r_term + self.eta * shaped
+
+    # 関数的に呼べるようにする（env.step の reward_fn(prev, next) 形式に対応）
+    __call__ = get_reward
