@@ -212,4 +212,3 @@ __marimo__/
 
 # 学習したエージェントの重み保存ディレクトリ
 rl_agent/model_weights/*
-!rl_agent/model_weights
