@@ -143,6 +143,9 @@ class AgentVsAgentView(tk.Frame):
         if self._after_id is not None:
             self.after_cancel(self._after_id)
             self._after_id = None
+        if self._animation_after is not None:
+            self.after_cancel(self._animation_after)
+            self._animation_after = None
         self._running = False
         self._start_button.config(state=tk.NORMAL)
         self._stop_button.config(state=tk.DISABLED)
@@ -210,7 +213,12 @@ class AgentVsAgentView(tk.Frame):
 
     def destroy(self) -> None:  # type: ignore[override]
         """ウィジェット破棄時にタイマーを停止する。"""
-        self._stop_game()
+        if self._after_id is not None:
+            self.after_cancel(self._after_id)
+            self._after_id = None
+        if self._animation_after is not None:
+            self.after_cancel(self._animation_after)
+            self._animation_after = None
         super().destroy()
 
     def _play_start_animation(self) -> None:
