@@ -110,6 +110,9 @@ class OthelloGame:
             player = self.player
         assert self.board[r, c] == EMPTY  # 空白でない場合は石を置くことができない
 
+        # 着手地点に石を配置
+        self.board[r, c] = player
+
         flipped = []
         for dr, dc in DIRECTIONS:
             line = []
@@ -122,6 +125,8 @@ class OthelloGame:
             if line and self.is_inside(rr, cc) and self.board[rr, cc] == player:  # 石をひっくり返す場所が存在 & 盤面の範囲内か & 自分の石をみたか
                 flipped.extend(line)  # 石をひっくり返す場所を追加
         if not flipped:  # 石をひっくり返す場所が存在しない場合は不正な手
+            # 着手地点を元に戻す
+            self.board[r, c] = EMPTY
             raise ValueError("Illegal move")
         for rr, cc in flipped:  # 石をひっくり返す
             self.board[rr, cc] = player

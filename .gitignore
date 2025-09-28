@@ -222,3 +222,4 @@ rl_agent/mori/dbs/*
 
 # 学習したモデル
 rl_agent/mori/models/*
+rl_agent/mori/model_weights/*
