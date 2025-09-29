@@ -39,6 +39,9 @@ class AgentVsHumanView(tk.Frame):
         self._on_back = on_back
         self._agent = create_agent(agent_name)
         self._controller = GameController()
+        self._human_color = self._controller.current_player()
+        self._agent_color = self._controller.env.game.opponent(self._human_color)
+        self._agent_after: Optional[str] = None
         self._animation_after: Optional[str] = None
 
         # UIとゲーム状態を初期化
@@ -105,7 +108,10 @@ class AgentVsHumanView(tk.Frame):
 
     def _reset_game(self) -> None:
         """ゲームを初期化する。"""
+        self._cancel_scheduled_agent_move()
         self._controller.reset()
+        self._human_color = self._controller.current_player()
+        self._agent_color = self._controller.env.game.opponent(self._human_color)
         self._draw_board()
         self._update_status()
         self._play_start_animation()
@@ -113,6 +119,9 @@ class AgentVsHumanView(tk.Frame):
     def _on_board_click(self, event: tk.Event) -> None:
         """盤面クリック時の処理。"""
         if self._controller.is_finished():
+            return
+
+        if self._controller.current_player() != self._human_color:
             return
 
         row, col = self._board_canvas.event_to_cell(event)
@@ -125,17 +134,39 @@ class AgentVsHumanView(tk.Frame):
 
         # 人間の手を適用
         self._controller.step(action)
+        self._draw_board()
+        self._update_status()
 
-        # 終局チェック
-        if not self._controller.is_finished():
-            # エージェント手番で行動
+        if self._controller.is_finished():
+            self._show_finish_effect()
+            return
+        self._schedule_agent_turns(delay_ms=500)
+
+    def _schedule_agent_turns(self, delay_ms: int) -> None:
+        """指定ディレイ後にエージェント手番を開始する。"""
+        self._cancel_scheduled_agent_move()
+        self._agent_after = self.after(delay_ms, self._process_agent_turns)
+
+    def _cancel_scheduled_agent_move(self) -> None:
+        """予約済みのエージェント手番をキャンセルする。"""
+        if self._agent_after is not None:
+            self.after_cancel(self._agent_after)
+            self._agent_after = None
+
+    def _process_agent_turns(self) -> None:
+        """エージェントの連続手番を自動的に処理する。"""
+        self._agent_after = None
+        while (
+            not self._controller.is_finished()
+            and self._controller.current_player() == self._agent_color
+        ):
             agent_action = self._agent.select_action(self._controller.env)
             self._controller.step(agent_action)
-        else:
-            self._show_finish_effect()
 
         self._draw_board()
         self._update_status()
+        if self._controller.is_finished():
+            self._show_finish_effect()
 
     def _draw_board(self) -> None:
         """現在の盤面を描画する。"""
@@ -165,7 +196,7 @@ class AgentVsHumanView(tk.Frame):
 
         self._status_label.config(text="\n".join(status_lines))
         self._turn_label.config(
-            text="YOUR TURN" if player == 1 else "AGENT TURN",
+            text="YOUR TURN" if player == self._human_color else "AGENT TURN",
             foreground=RETRO_COLORS["accent"],
             font=("Press Start 2P", 24),
         )
@@ -224,3 +255,11 @@ class AgentVsHumanView(tk.Frame):
             overlay.after(200, lambda: blink(count - 1))
 
         blink()
+
+    def destroy(self) -> None:  # type: ignore[override]
+        """ウィジェット破棄時にタイマーを停止する。"""
+        self._cancel_scheduled_agent_move()
+        if self._animation_after is not None:
+            self.after_cancel(self._animation_after)
+            self._animation_after = None
+        super().destroy()

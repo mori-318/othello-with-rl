@@ -14,7 +14,7 @@ from app.utils.style import (
     style_panel,
 )
 
-AGENT_OPTIONS: List[str] = ["random", "dqn", "bc", "mcts_nn"]
+AGENT_OPTIONS: List[str] = ["random", "dqn", "mcts_nn"]
 
 
 class HomeView(tk.Frame):
