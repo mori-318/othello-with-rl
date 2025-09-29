@@ -1,5 +1,5 @@
 import numpy as np
-from utils.othello_game import OthelloGame, EMPTY, BLACK, WHITE
+from utils.mori.othello_game import OthelloGame
 
 class OthelloEnv:
     """
@@ -53,13 +53,16 @@ class OthelloEnv:
             if action == 64:  # パスの場合
                 # パスして相手番
                 self.game.player = self.game.opponent(self.game.player)
+                # パス後に相手も合法手がない場合は自動的に手番を戻す
+                if not self.game.legal_moves(self.game.player):
+                    self.game.player = self.game.opponent(self.game.player)
             else:
                 r, c = divmod(action, 8)
                 self.game.play(r, c, self.game.player)
-        except ValueError:
+        except (ValueError, AssertionError):
             # 不正手なら、即終了 & 負の報酬
             done = True
-            reward = -10.0
+            reward = -1.0
             return self.get_state(), reward, done, {}
 
         # 報酬を計算
@@ -79,10 +82,9 @@ class OthelloEnv:
                 - [0] 盤面: -1(白), 0(空), 1(黒)
                 - [1] 手番: 盤面と同形状で、全要素が現手番(BLACK=1/WHITE=-1)
         """
-        board = np.array(self.game.board, dtype=np.float32)
-        player_plane = np.full_like(board, fill_value=self.game.player, dtype=np.float32)
-        state = np.stack([board, player_plane], axis=0)
-        return state
+        board = self.game.board.astype(np.float32)
+        player_plane = np.full(board.shape, float(self.game.player), dtype=np.float32)
+        return np.stack((board, player_plane), axis=0)
 
     def legal_actions(self):
         """

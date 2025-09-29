@@ -1,14 +1,18 @@
 from typing import List, Tuple
 
+import numpy as np
 
+
+# 定数
 EMPTY, BLACK, WHITE = 0, 1, -1
-DIRECTIONS = [(-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)]
+DIRECTIONS = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
+
 
 class OthelloGame:
     def __init__(self):
-        self.board = [[EMPTY for _ in range(8)] for _ in range(8)]
-        self.board[3][3] = self.board[4][4] = WHITE
-        self.board[3][4] = self.board[4][3] = BLACK
+        self.board = np.zeros((8, 8), dtype=np.int8)
+        self.board[3, 3] = self.board[4, 4] = WHITE
+        self.board[3, 4] = self.board[4, 3] = BLACK
         self.player = BLACK
 
     @staticmethod
@@ -30,11 +34,11 @@ class OthelloGame:
     def clone(self):
         """盤面をコピーして新しいインスタンスを返す"""
         g = OthelloGame()
-        g.board = [row[:] for row in self.board]
+        g.board = self.board.copy()
         g.player = self.player
         return g
 
-    def inside(self, r, c):
+    def is_inside(self, r, c):
         """
         盤面の範囲内かを返す
         Args:
@@ -55,40 +59,48 @@ class OthelloGame:
         """
         if player is None:
             player = self.player
-        moves = []
-        for r in range(8):
-            for c in range(8):
-                if self.board[r][c] != EMPTY:  # 空白でない場合は合法手ではない
-                    continue
-                if self._would_flip(r, c, player):  # 石をひっくり返せる場合は合法手
-                    moves.append((r, c))
+        empties = np.argwhere(self.board == EMPTY)
+        moves: List[Tuple[int, int]] = []
+        for r, c in empties:
+            r_int = int(r)
+            c_int = int(c)
+            if self._would_flip(r_int, c_int, player):
+                moves.append((r_int, c_int))
         return moves
 
     def _would_flip(self, r, c, player) -> bool:
         """
         石をひっくり返せるかを返す
+
         Args:
             r (int): 行
             c (int): 列
             player (int): プレイヤーの色
+
         Returns:
             bool: 石をひっくり返せるか
         """
-        if self.board[r][c] != EMPTY:  # 空白でない場合は石をひっくり返せない
+        if self.board[r, c] != EMPTY:  # 空白でない場合は石をひっくり返せない
             return False
+
+        opponent = self.opponent(player)
         for dr, dc in DIRECTIONS:
-            rr, cc = r + dr, c + dc
-            seen_opp = False  # 相手の石を一度見たか
-            while self.inside(rr, cc) and self.board[rr][cc] == self.opponent(player):  # 盤面の範囲内か & 相手の石が置かれている場所か
-                seen_opp = True
-                rr += dr; cc += dc
-            if seen_opp and self.inside(rr, cc) and self.board[rr][cc] == player:  # 相手の石を一度見たか & 盤面の範囲内か & 自分の石をみたか
+            rr = r + dr
+            cc = c + dc
+            if not self.is_inside(rr, cc) or self.board[rr, cc] != opponent:
+                continue
+            # 相手の石が連続する限り進む
+            while self.is_inside(rr, cc) and self.board[rr, cc] == opponent:
+                rr += dr
+                cc += dc
+            if self.is_inside(rr, cc) and self.board[rr, cc] == player:
                 return True
         return False
 
     def play(self, r, c, player=None):
         """
         石を置く & 石をひっくり返す
+
         Args:
             r (int): 行
             c (int): 列
@@ -96,21 +108,28 @@ class OthelloGame:
         """
         if player is None:
             player = self.player
-        assert self.board[r][c] == EMPTY  # 空白でない場合は石を置くことができない
+        assert self.board[r, c] == EMPTY  # 空白でない場合は石を置くことができない
+
+        # 着手地点に石を配置
+        self.board[r, c] = player
+
         flipped = []
         for dr, dc in DIRECTIONS:
             line = []
-            rr, cc = r + dr, c + dc
-            while self.inside(rr,cc) and self.board[rr][cc] == self.opponent(player):  # 盤面の範囲内か & 相手の石が置かれている場所か
-                line.append((rr,cc))  # 石をひっくり返す場所を追加
-                rr += dr; cc += dc
-            if line and self.inside(rr,cc) and self.board[rr][cc] == player:  # 石をひっくり返す場所が存在 & 盤面の範囲内か & 自分の石をみたか
+            rr = r + dr
+            cc = c + dc
+            while self.is_inside(rr, cc) and self.board[rr, cc] == self.opponent(player):  # 盤面の範囲内か & 相手の石が置かれている場所か
+                line.append((rr, cc))  # 石をひっくり返す場所を追加
+                rr += dr
+                cc += dc
+            if line and self.is_inside(rr, cc) and self.board[rr, cc] == player:  # 石をひっくり返す場所が存在 & 盤面の範囲内か & 自分の石をみたか
                 flipped.extend(line)  # 石をひっくり返す場所を追加
         if not flipped:  # 石をひっくり返す場所が存在しない場合は不正な手
+            # 着手地点を元に戻す
+            self.board[r, c] = EMPTY
             raise ValueError("Illegal move")
-        self.board[r][c] = player
-        for rr,cc in flipped:  # 石をひっくり返す
-            self.board[rr][cc] = player
+        for rr, cc in flipped:  # 石をひっくり返す
+            self.board[rr, cc] = player
         self.player = self.opponent(player)
         # 現在のプレイヤーが合法手がない場合は相手の番
         if not self.legal_moves(self.player):
@@ -118,26 +137,36 @@ class OthelloGame:
 
     def is_terminal(self) -> bool:
         """
-        終局かを返す
+        終局かどうかを判定する
+
         Returns:
-            bool: 終局か
+            bool: 終局かどうか
         """
-        if self.legal_moves(BLACK): return False
-        if self.legal_moves(WHITE): return False
+        if self.legal_moves(BLACK):
+            return False
+        if self.legal_moves(WHITE):
+            return False
         return True
 
     def game_score(self) -> int:
         """
-        黒が+1, 白が-1としてスコアを計算
+        黒(+1)・白(-1)の石数差を返す
+
         Returns:
-            int: スコア
+            int: 黒(+1)・白(-1)の石数差
         """
-        s = 0
-        for r in range(8):
-            for c in range(8):
-                s += self.board[r][c]
-        return s
+        return int(self.board.sum())
 
     def winner(self) -> int:
-        s = self.game_score()
-        return BLACK if s > 0 else WHITE if s < 0 else 0
+        """
+        勝者を返す（黒:+1, 白:-1, 引き分け:0）
+
+        Returns:
+            int: 勝者
+        """
+        score = self.game_score()
+        if score > 0:
+            return BLACK
+        if score < 0:
+            return WHITE
+        return 0

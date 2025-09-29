@@ -212,3 +212,14 @@ __marimo__/
 
 # 学習したエージェントの重み保存ディレクトリ
 rl_agent/model_weights/*
+
+# BC模倣学習で使用した棋譜データ
+rl_agent/Egaroucid_Train_Data/*
+rl_agent/data/*
+
+# Optunaのデータベース
+rl_agent/mori/dbs/*
+
+# 学習したモデル
+rl_agent/mori/models/*
+rl_agent/mori/model_weights/*
